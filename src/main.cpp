@@ -1,10 +1,29 @@
 #include <Arduino.h>
 #include <Joystick.h>
+// #define BOUNCE_WITH_PROMPT_DETECTION
+#include <Bounce2.h>
+#include "pinmap.h"
 
-#define N_BUTTONS 10
+#define DEBOUNCE_MILLIS 5
 
-int lastButtonState[N_BUTTONS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-int buttonMap[N_BUTTONS] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 16};
+struct Button
+{
+  uint8_t pin;
+  Bounce bounce;
+  bool state;
+};
+
+Button buttonMap[NUM_BTN] = {
+    {.pin = BOOSTER_L_U},
+    {.pin = BOOSTER_L_R},
+    {.pin = BOOSTER_L_D},
+    {.pin = BOOSTER_L_L},
+    {.pin = BOOSTER_L_BTN},
+    {.pin = BOOSTER_R_U},
+    {.pin = BOOSTER_R_R},
+    {.pin = BOOSTER_R_D},
+    {.pin = BOOSTER_R_L},
+    {.pin = BOOSTER_R_BTN}};
 
 // Create the Joystick
 Joystick_ Joystick(
@@ -17,19 +36,14 @@ Joystick_ Joystick(
 
 void setup()
 {
-  // Initialize booster left pins
-  pinMode(2, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(4, INPUT_PULLUP);
-  pinMode(5, INPUT_PULLUP);
-  pinMode(10, INPUT_PULLUP);
-
-  // Initialize booster right pins
-  pinMode(6, INPUT_PULLUP);
-  pinMode(7, INPUT_PULLUP);
-  pinMode(8, INPUT_PULLUP);
-  pinMode(9, INPUT_PULLUP);
-  pinMode(16, INPUT_PULLUP);
+  // Button setup
+  for (size_t i = 0; i < NUM_BTN; i++)
+  {
+    buttonMap[i].bounce = Bounce();
+    buttonMap[i].bounce.attach(buttonMap[i].pin, INPUT_PULLUP);
+    buttonMap[i].bounce.interval(DEBOUNCE_MILLIS);
+    buttonMap[i].state = false;
+  }
 
   // Initialize the Joystick library
   Joystick.begin();
@@ -41,15 +55,18 @@ void setup()
 
 void loop()
 {
-  for (size_t i = 0; i < N_BUTTONS; i++)
+  for (size_t i = 0; i < NUM_BTN; i++)
   {
-    int currentButtonState = !digitalRead(buttonMap[i]);
-    if (currentButtonState != lastButtonState[i])
+    if (!buttonMap[i].bounce.update())
+      continue;
+
+    bool currentState = buttonMap[i].bounce.fell();
+    if (buttonMap[i].state != currentState)
     {
-      switch (i)
+      switch (buttonMap[i].pin)
       {
-      case 0: // BOOSTER_L UP
-        if (currentButtonState == 1)
+      case BOOSTER_L_U:
+        if (currentState)
         {
           Joystick.setYAxis(-1);
         }
@@ -58,8 +75,8 @@ void loop()
           Joystick.setYAxis(0);
         }
         break;
-      case 1: // BOOSTER_L RIGHT
-        if (currentButtonState == 1)
+      case BOOSTER_L_R:
+        if (currentState)
         {
           Joystick.setXAxis(1);
         }
@@ -68,8 +85,8 @@ void loop()
           Joystick.setXAxis(0);
         }
         break;
-      case 2: // BOOSTER_L DOWN
-        if (currentButtonState == 1)
+      case BOOSTER_L_D:
+        if (currentState)
         {
           Joystick.setYAxis(1);
         }
@@ -78,8 +95,8 @@ void loop()
           Joystick.setYAxis(0);
         }
         break;
-      case 3: // BOOSTER_L LEFT
-        if (currentButtonState == 1)
+      case BOOSTER_L_L:
+        if (currentState)
         {
           Joystick.setXAxis(-1);
         }
@@ -88,8 +105,11 @@ void loop()
           Joystick.setXAxis(0);
         }
         break;
-      case 4: // BOOSTER_R UP
-        if (currentButtonState == 1)
+      case BOOSTER_L_BTN:
+        Joystick.setButton(0, currentState);
+        break;
+      case BOOSTER_R_U:
+        if (currentState)
         {
           Joystick.setRyAxis(-1);
         }
@@ -98,8 +118,8 @@ void loop()
           Joystick.setRyAxis(0);
         }
         break;
-      case 5: // BOOSTER_R RIGHT
-        if (currentButtonState == 1)
+      case BOOSTER_R_R:
+        if (currentState)
         {
           Joystick.setRxAxis(1);
         }
@@ -108,8 +128,8 @@ void loop()
           Joystick.setRxAxis(0);
         }
         break;
-      case 6: // BOOSTER_R DOWN
-        if (currentButtonState == 1)
+      case BOOSTER_R_D:
+        if (currentState)
         {
           Joystick.setRyAxis(1);
         }
@@ -118,8 +138,8 @@ void loop()
           Joystick.setRyAxis(0);
         }
         break;
-      case 7: // BOOSTER_R LEFT
-        if (currentButtonState == 1)
+      case BOOSTER_R_L:
+        if (currentState)
         {
           Joystick.setRxAxis(-1);
         }
@@ -128,16 +148,11 @@ void loop()
           Joystick.setRxAxis(0);
         }
         break;
-      case 8: // BOOSTER_L BTN
-        Joystick.setButton(0, currentButtonState);
-        break;
-      case 9: // BOOSTER_R BTN
-        Joystick.setButton(1, currentButtonState);
+      case BOOSTER_R_BTN:
+        Joystick.setButton(1, currentState);
         break;
       }
-      lastButtonState[i] = currentButtonState;
     }
+    buttonMap[i].state = currentState;
   }
-
-  delay(10);
 }
