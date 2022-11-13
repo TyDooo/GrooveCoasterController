@@ -27,10 +27,10 @@ Button buttonMap[NUM_BTN] = {
 
 // Create the Joystick
 Joystick_ Joystick(
-    JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK,
-    2, 0,
-    true, true, false,
-    true, true, false,
+    JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_GAMEPAD,
+    16, 1,
+    true, true, true,
+    false, false, true,
     false, false,
     false, false, false);
 
@@ -49,8 +49,6 @@ void setup()
   Joystick.begin();
   Joystick.setXAxisRange(-1, 1);
   Joystick.setYAxisRange(-1, 1);
-  Joystick.setRxAxisRange(-1, 1);
-  Joystick.setRyAxisRange(-1, 1);
 }
 
 void loop()
@@ -106,50 +104,22 @@ void loop()
         }
         break;
       case BOOSTER_L_BTN:
-        Joystick.setButton(0, currentState);
+        Joystick.setButton(6, currentState);
         break;
       case BOOSTER_R_U:
-        if (currentState)
-        {
-          Joystick.setRyAxis(-1);
-        }
-        else
-        {
-          Joystick.setRyAxis(0);
-        }
+        Joystick.setButton(4, currentState);
         break;
       case BOOSTER_R_R:
-        if (currentState)
-        {
-          Joystick.setRxAxis(1);
-        }
-        else
-        {
-          Joystick.setRxAxis(0);
-        }
+        Joystick.setButton(1, currentState);
         break;
       case BOOSTER_R_D:
-        if (currentState)
-        {
-          Joystick.setRyAxis(1);
-        }
-        else
-        {
-          Joystick.setRyAxis(0);
-        }
+        Joystick.setButton(0, currentState);
         break;
       case BOOSTER_R_L:
-        if (currentState)
-        {
-          Joystick.setRxAxis(-1);
-        }
-        else
-        {
-          Joystick.setRxAxis(0);
-        }
+        Joystick.setButton(3, currentState);
         break;
       case BOOSTER_R_BTN:
-        Joystick.setButton(1, currentState);
+        Joystick.setButton(7, currentState);
         break;
       }
     }
