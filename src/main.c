@@ -1,6 +1,11 @@
-#include <stdio.h>
+#include "PiCoaster2040.h"
 
 int main()
 {
-    printf("hello world!");
+    setup();
+
+    while (1)
+        update();
+
+    return 0;
 }
