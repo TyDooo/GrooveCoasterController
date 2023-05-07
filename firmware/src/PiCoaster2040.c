@@ -4,6 +4,10 @@
 #include "booster.h"
 #include "pinmap.h"
 #include "input_state.h"
+#include "ws2812.h"
+
+// TODO: move to config
+#define WS2812_PIN 21
 
 booster_state_t booster_left = {0};
 booster_state_t booster_right = {0};
@@ -14,6 +18,11 @@ void setup()
 
     init_booster(&booster_left, &booster_l_conf);
     init_booster(&booster_right, &booster_r_conf);
+
+    ws2812_init(WS2812_PIN, false);
+
+    set_all_pixels(5, 5, 5);
+    show_pixels();
 }
 
 void update()
