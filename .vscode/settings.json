@@ -1,3 +1,7 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}/firmware"
+    "cmake.sourceDirectory": "${workspaceFolder}/firmware",
+    "conventionalCommits.scopes": [
+        "hardware",
+        "firmware"
+    ]
 }
