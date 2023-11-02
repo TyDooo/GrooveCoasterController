@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
-# Pull in Raspberry Pi Pico SDK
-include(lib/pico-sdk/pico_sdk_init.cmake)
+# initialize the SDK based on PICO_SDK_PATH
+include(pico_sdk_import.cmake)
 
 project(PiCoaster2040)
 
