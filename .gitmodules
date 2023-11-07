@@ -1,0 +1,3 @@
+[submodule "lib/MPG"]
+	path = lib/MPG
+	url = https://github.com/FeralAI/MPG.git
