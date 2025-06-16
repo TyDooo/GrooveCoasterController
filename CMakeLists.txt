@@ -14,12 +14,25 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-file(GLOB ${PROJECT_NAME}_SOURCES src/*.c src/usb/*.c)
+file(GLOB_RECURSE ${PROJECT_NAME}_C_SOURCES
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+)
 
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
+file(GLOB_RECURSE ${PROJECT_NAME}_H_HEADERS
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+)
+
+add_executable(${PROJECT_NAME}
+    ${${PROJECT_NAME}_C_SOURCES}
+    ${${PROJECT_NAME}_H_HEADERS}
+)
 
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+                           PRIVATE
+                           ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE pico_stdlib tinyusb_device
                                               tinyusb_board)
