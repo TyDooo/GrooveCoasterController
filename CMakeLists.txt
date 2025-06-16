@@ -1,17 +1,18 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.25)
 
-# initialize the SDK based on PICO_SDK_PATH
-include(pico_sdk_import.cmake)
+# Need to include pico-sdk cmake support. Must happen before project.
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(PiCoaster2040)
-
-# Initialise the Raspberry Pi Pico SDK
-pico_sdk_init()
+project(PiCoaster2040
+  LANGUAGES C CXX ASM
+)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(-Wall -Wextra -Werror)
+# Initialise the Raspberry Pi Pico SDK
+pico_sdk_init()
 
 file(GLOB ${PROJECT_NAME}_SOURCES src/*.c src/usb/*.c)
 
@@ -23,7 +24,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} PRIVATE pico_stdlib tinyusb_device
                                               tinyusb_board)
 
-pico_enable_stdio_usb(${PROJECT_NAME} 0)
+pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 1)
 
 # create map/bin/hex/uf2 file in addition to ELF.
