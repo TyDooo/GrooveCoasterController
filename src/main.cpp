@@ -1,7 +1,12 @@
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
+#include <FastLED.h>
 
 #include "booster.h"
+
+#define NUM_LEDS 32
+
+CRGB leds[NUM_LEDS];
 
 const int leftPins[5] = {D15, D14, D13, D12, D11};
 const int rightPins[5] = {D16, D17, D18, D19, D20};
@@ -23,6 +28,8 @@ void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
+
+    FastLED.addLeds<NEOPIXEL, D21>(leds, NUM_LEDS); 
 
     if (!TinyUSBDevice.isInitialized())
     {
@@ -125,4 +132,11 @@ void loop()
     }
 
     usb_hid.sendReport(0, &gp, sizeof(gp));
+
+    for (size_t i = 0; i < NUM_LEDS; i++)
+    {
+        leds[i] = CRGB::Purple;
+    }
+    FastLED.show();
+    delay(50);
 }
