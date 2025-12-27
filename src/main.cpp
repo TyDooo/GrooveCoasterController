@@ -171,6 +171,73 @@ void send_gamepad_report()
     usb_hid.sendReport(0, &gp, sizeof(gp));
 }
 
+void update_leds()
+{
+    static uint8_t brightness = 20;
+    static int8_t direction = 2;
+
+    brightness += direction;
+    if (brightness <= 20 || brightness >= 200)
+    {
+        direction = -direction;
+    }
+
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        leds[i] = CHSV(0, 0, brightness);
+    }
+
+    // Left booster
+
+    switch (booster_left.getJoystickDirection())
+    {
+    case Booster::JoystickDirection::Up:
+        set_segment_color(0, CRGB::Red);
+        set_segment_color(1, CRGB::Red);
+        set_segment_color(2, CRGB::Red);
+        set_segment_color(3, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::Down:
+        set_segment_color(7, CRGB::Red);
+        set_segment_color(6, CRGB::Red);
+        set_segment_color(5, CRGB::Red);
+        set_segment_color(4, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::Left:
+        set_segment_color(0, CRGB::Red);
+        set_segment_color(1, CRGB::Red);
+        set_segment_color(6, CRGB::Red);
+        set_segment_color(7, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::Right:
+        set_segment_color(2, CRGB::Red);
+        set_segment_color(3, CRGB::Red);
+        set_segment_color(4, CRGB::Red);
+        set_segment_color(5, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::UpLeft:
+        set_segment_color(0, CRGB::Red);
+        set_segment_color(1, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::UpRight:
+        set_segment_color(2, CRGB::Red);
+        set_segment_color(3, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::DownLeft:
+        set_segment_color(6, CRGB::Red);
+        set_segment_color(7, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::DownRight:
+        set_segment_color(4, CRGB::Red);
+        set_segment_color(5, CRGB::Red);
+        break;
+    default:
+        break;
+    }
+
+    FastLED.show();
+}
+
 void loop()
 {
 #ifdef TINYUSB_NEED_POLLING_TASK
@@ -181,51 +248,10 @@ void loop()
     booster_left.update();
     booster_right.update();
 
-    // Reset LEDs
-    for (int i = 0; i < NUM_SEGMENTS; i++)
+    EVERY_N_MILLISECONDS(20)
     {
-        set_segment_color(i, CRGB::White);
+        update_leds();
     }
-
-    // Left booster
-
-    switch (booster_left.getJoystickDirection())
-    {
-    case Booster::JoystickDirection::Up:
-        set_segment_color(1, CRGB::Red);
-        set_segment_color(2, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::Down:
-        set_segment_color(6, CRGB::Red);
-        set_segment_color(5, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::Left:
-        set_segment_color(0, CRGB::Red);
-        set_segment_color(7, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::Right:
-        set_segment_color(3, CRGB::Red);
-        set_segment_color(4, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::UpLeft:
-        set_segment_color(0, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::UpRight:
-        set_segment_color(2, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::DownLeft:
-        set_segment_color(7, CRGB::Red);
-        break;
-    case Booster::JoystickDirection::DownRight:
-        set_segment_color(5, CRGB::Red);
-        break;
-    default:
-        break;
-    }
-
-    FastLED.show();
 
     send_gamepad_report();
-
-    delay(50);
 }
