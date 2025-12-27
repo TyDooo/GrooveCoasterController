@@ -5,10 +5,12 @@
 #include "booster.h"
 
 #define NUM_LEDS 32
+#define LEDS_PER_SEGMENT 4
+#define NUM_SEGMENTS (NUM_LEDS / LEDS_PER_SEGMENT)
 
 CRGB leds[NUM_LEDS];
 
-const int leftPins[5] = {D15, D14, D13, D12, D11};
+const int leftPins[5] = {D12, D14, D15, D13, D11};
 const int rightPins[5] = {D16, D17, D18, D19, D20};
 
 Booster booster_left(leftPins);
@@ -29,7 +31,7 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
 
-    FastLED.addLeds<NEOPIXEL, D21>(leds, NUM_LEDS); 
+    FastLED.addLeds<NEOPIXEL, D21>(leds, NUM_LEDS);
 
     if (!TinyUSBDevice.isInitialized())
     {
@@ -52,21 +54,23 @@ void setup()
     }
 }
 
+void set_segment_color(int segment, CRGB color)
+{
+    int start = segment * LEDS_PER_SEGMENT;
+    int end = start + LEDS_PER_SEGMENT;
+    for (int i = start; i < end; i++)
+    {
+        leds[i] = color;
+        leds[i].subtractFromRGB(200);
+    }
+}
+
 void loop()
 {
 #ifdef TINYUSB_NEED_POLLING_TASK
     // Manual call tud_task since it isn't called by Core's background
     TinyUSBDevice.task();
 #endif
-
-    // not enumerated()/mounted() yet: nothing to do
-    if (!TinyUSBDevice.mounted())
-    {
-        return;
-    }
-
-    if (!usb_hid.ready())
-        return;
 
     booster_left.update();
     booster_right.update();
@@ -81,24 +85,61 @@ void loop()
     gp.hat = 0;
     gp.buttons = 0;
 
+    // Reset LEDs
+    for (int i = 0; i < NUM_SEGMENTS; i++)
+    {
+        set_segment_color(i, CRGB::White);
+    }
+
     // Left booster
 
-    if (booster_left.isButtonPressed(Booster::ButtonType::Up))
+    if (booster_left.isButtonPressed(Booster::ButtonType::Up) && booster_left.isButtonPressed(Booster::ButtonType::Left))
     {
         gp.y = -127;
+        gp.x = -127;
+        set_segment_color(0, CRGB::Red);
+    }
+    else if (booster_left.isButtonPressed(Booster::ButtonType::Up) && booster_left.isButtonPressed(Booster::ButtonType::Right))
+    {
+        gp.y = -127;
+        gp.x = 127;
+        set_segment_color(2, CRGB::Red);
+    }
+    else if (booster_left.isButtonPressed(Booster::ButtonType::Down) && booster_left.isButtonPressed(Booster::ButtonType::Left))
+    {
+        gp.y = 127;
+        gp.x = -127;
+        set_segment_color(7, CRGB::Red);
+    }
+    else if (booster_left.isButtonPressed(Booster::ButtonType::Down) && booster_left.isButtonPressed(Booster::ButtonType::Right))
+    {
+        gp.y = 127;
+        gp.x = 127;
+        set_segment_color(5, CRGB::Red);
+    }
+    else if (booster_left.isButtonPressed(Booster::ButtonType::Up))
+    {
+        gp.y = -127;
+        set_segment_color(1, CRGB::Red);
+        set_segment_color(2, CRGB::Red);
     }
     else if (booster_left.isButtonPressed(Booster::ButtonType::Down))
     {
         gp.y = 127;
+        set_segment_color(6, CRGB::Red);
+        set_segment_color(5, CRGB::Red);
     }
-
-    if (booster_left.isButtonPressed(Booster::ButtonType::Left))
+    else if (booster_left.isButtonPressed(Booster::ButtonType::Left))
     {
         gp.x = -127;
+        set_segment_color(0, CRGB::Red);
+        set_segment_color(7, CRGB::Red);
     }
     else if (booster_left.isButtonPressed(Booster::ButtonType::Right))
     {
         gp.x = 127;
+        set_segment_color(3, CRGB::Red);
+        set_segment_color(4, CRGB::Red);
     }
 
     if (booster_left.isButtonPressed(Booster::ButtonType::Top))
@@ -131,12 +172,18 @@ void loop()
         gp.buttons |= GAMEPAD_BUTTON_1;
     }
 
+    FastLED.show();
+
+    // not enumerated()/mounted() yet: nothing to do
+    if (!TinyUSBDevice.mounted())
+    {
+        return;
+    }
+
+    if (!usb_hid.ready())
+        return;
+
     usb_hid.sendReport(0, &gp, sizeof(gp));
 
-    for (size_t i = 0; i < NUM_LEDS; i++)
-    {
-        leds[i] = CRGB::Purple;
-    }
-    FastLED.show();
     delay(50);
 }
