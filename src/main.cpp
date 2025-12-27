@@ -65,15 +65,16 @@ void set_segment_color(int segment, CRGB color)
     }
 }
 
-void loop()
+void send_gamepad_report()
 {
-#ifdef TINYUSB_NEED_POLLING_TASK
-    // Manual call tud_task since it isn't called by Core's background
-    TinyUSBDevice.task();
-#endif
+    // not enumerated()/mounted() yet: nothing to do
+    if (!TinyUSBDevice.mounted())
+    {
+        return;
+    }
 
-    booster_left.update();
-    booster_right.update();
+    if (!usb_hid.ready())
+        return;
 
     // Reset gamepad report
     gp.x = 0;
@@ -85,61 +86,40 @@ void loop()
     gp.hat = 0;
     gp.buttons = 0;
 
-    // Reset LEDs
-    for (int i = 0; i < NUM_SEGMENTS; i++)
-    {
-        set_segment_color(i, CRGB::White);
-    }
-
     // Left booster
 
-    if (booster_left.isButtonPressed(Booster::ButtonType::Up) && booster_left.isButtonPressed(Booster::ButtonType::Left))
+    switch (booster_left.getJoystickDirection())
     {
+    case Booster::JoystickDirection::Up:
+        gp.y = -127;
+        break;
+    case Booster::JoystickDirection::Down:
+        gp.y = 127;
+        break;
+    case Booster::JoystickDirection::Left:
+        gp.x = -127;
+        break;
+    case Booster::JoystickDirection::Right:
+        gp.x = 127;
+        break;
+    case Booster::JoystickDirection::UpLeft:
         gp.y = -127;
         gp.x = -127;
-        set_segment_color(0, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Up) && booster_left.isButtonPressed(Booster::ButtonType::Right))
-    {
+        break;
+    case Booster::JoystickDirection::UpRight:
         gp.y = -127;
         gp.x = 127;
-        set_segment_color(2, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Down) && booster_left.isButtonPressed(Booster::ButtonType::Left))
-    {
+        break;
+    case Booster::JoystickDirection::DownLeft:
         gp.y = 127;
         gp.x = -127;
-        set_segment_color(7, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Down) && booster_left.isButtonPressed(Booster::ButtonType::Right))
-    {
+        break;
+    case Booster::JoystickDirection::DownRight:
         gp.y = 127;
         gp.x = 127;
-        set_segment_color(5, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Up))
-    {
-        gp.y = -127;
-        set_segment_color(1, CRGB::Red);
-        set_segment_color(2, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Down))
-    {
-        gp.y = 127;
-        set_segment_color(6, CRGB::Red);
-        set_segment_color(5, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Left))
-    {
-        gp.x = -127;
-        set_segment_color(0, CRGB::Red);
-        set_segment_color(7, CRGB::Red);
-    }
-    else if (booster_left.isButtonPressed(Booster::ButtonType::Right))
-    {
-        gp.x = 127;
-        set_segment_color(3, CRGB::Red);
-        set_segment_color(4, CRGB::Red);
+        break;
+    default:
+        break;
     }
 
     if (booster_left.isButtonPressed(Booster::ButtonType::Top))
@@ -149,22 +129,38 @@ void loop()
 
     // Right booster
 
-    if (booster_right.isButtonPressed(Booster::ButtonType::Up))
+    switch (booster_right.getJoystickDirection())
     {
+    case Booster::JoystickDirection::Up:
         gp.ry = -127;
-    }
-    else if (booster_right.isButtonPressed(Booster::ButtonType::Down))
-    {
+        break;
+    case Booster::JoystickDirection::Down:
         gp.ry = 127;
-    }
-
-    if (booster_right.isButtonPressed(Booster::ButtonType::Left))
-    {
+        break;
+    case Booster::JoystickDirection::Left:
         gp.rx = -127;
-    }
-    else if (booster_right.isButtonPressed(Booster::ButtonType::Right))
-    {
+        break;
+    case Booster::JoystickDirection::Right:
         gp.rx = 127;
+        break;
+    case Booster::JoystickDirection::UpLeft:
+        gp.ry = -127;
+        gp.rx = -127;
+        break;
+    case Booster::JoystickDirection::UpRight:
+        gp.ry = -127;
+        gp.rx = 127;
+        break;
+    case Booster::JoystickDirection::DownLeft:
+        gp.ry = 127;
+        gp.rx = -127;
+        break;
+    case Booster::JoystickDirection::DownRight:
+        gp.ry = 127;
+        gp.rx = 127;
+        break;
+    default:
+        break;
     }
 
     if (booster_right.isButtonPressed(Booster::ButtonType::Top))
@@ -172,18 +168,64 @@ void loop()
         gp.buttons |= GAMEPAD_BUTTON_1;
     }
 
-    FastLED.show();
+    usb_hid.sendReport(0, &gp, sizeof(gp));
+}
 
-    // not enumerated()/mounted() yet: nothing to do
-    if (!TinyUSBDevice.mounted())
+void loop()
+{
+#ifdef TINYUSB_NEED_POLLING_TASK
+    // Manual call tud_task since it isn't called by Core's background
+    TinyUSBDevice.task();
+#endif
+
+    booster_left.update();
+    booster_right.update();
+
+    // Reset LEDs
+    for (int i = 0; i < NUM_SEGMENTS; i++)
     {
-        return;
+        set_segment_color(i, CRGB::White);
     }
 
-    if (!usb_hid.ready())
-        return;
+    // Left booster
 
-    usb_hid.sendReport(0, &gp, sizeof(gp));
+    switch (booster_left.getJoystickDirection())
+    {
+    case Booster::JoystickDirection::Up:
+        set_segment_color(1, CRGB::Red);
+        set_segment_color(2, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::Down:
+        set_segment_color(6, CRGB::Red);
+        set_segment_color(5, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::Left:
+        set_segment_color(0, CRGB::Red);
+        set_segment_color(7, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::Right:
+        set_segment_color(3, CRGB::Red);
+        set_segment_color(4, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::UpLeft:
+        set_segment_color(0, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::UpRight:
+        set_segment_color(2, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::DownLeft:
+        set_segment_color(7, CRGB::Red);
+        break;
+    case Booster::JoystickDirection::DownRight:
+        set_segment_color(5, CRGB::Red);
+        break;
+    default:
+        break;
+    }
+
+    FastLED.show();
+
+    send_gamepad_report();
 
     delay(50);
 }
