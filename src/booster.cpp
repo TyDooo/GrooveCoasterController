@@ -21,6 +21,11 @@ bool Booster::isButtonPressed(ButtonType button) const
     return buttons_[(int)button].isPressed();
 }
 
+bool Booster::isTopButtonPressed() const
+{
+    return isButtonPressed(ButtonType::Top);
+}
+
 void Booster::update()
 {
     for (int i = 0; i < BOOSTER_BUTTON_COUNT; ++i)

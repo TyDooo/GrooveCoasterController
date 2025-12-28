@@ -8,6 +8,11 @@
 #define LEDS_PER_SEGMENT 4
 #define NUM_SEGMENTS (NUM_LEDS / LEDS_PER_SEGMENT)
 
+// Gamepad axis constants
+#define AXIS_MIN -127
+#define AXIS_MAX 127
+#define AXIS_CENTER 0
+
 CRGB leds[NUM_LEDS];
 
 const int leftPins[5] = {D12, D14, D15, D13, D11};
@@ -25,6 +30,47 @@ uint8_t const desc_hid_report[] = {
 Adafruit_USBD_HID usb_hid;
 
 hid_gamepad_report_t gp;
+
+// Helper function to map joystick direction to axis values
+void mapDirectionToAxes(Booster::JoystickDirection direction, int8_t &xAxis, int8_t &yAxis)
+{
+    xAxis = AXIS_CENTER;
+    yAxis = AXIS_CENTER;
+
+    switch (direction)
+    {
+    case Booster::JoystickDirection::Up:
+        yAxis = AXIS_MIN;
+        break;
+    case Booster::JoystickDirection::Down:
+        yAxis = AXIS_MAX;
+        break;
+    case Booster::JoystickDirection::Left:
+        xAxis = AXIS_MIN;
+        break;
+    case Booster::JoystickDirection::Right:
+        xAxis = AXIS_MAX;
+        break;
+    case Booster::JoystickDirection::UpLeft:
+        yAxis = AXIS_MIN;
+        xAxis = AXIS_MIN;
+        break;
+    case Booster::JoystickDirection::UpRight:
+        yAxis = AXIS_MIN;
+        xAxis = AXIS_MAX;
+        break;
+    case Booster::JoystickDirection::DownLeft:
+        yAxis = AXIS_MAX;
+        xAxis = AXIS_MIN;
+        break;
+    case Booster::JoystickDirection::DownRight:
+        yAxis = AXIS_MAX;
+        xAxis = AXIS_MAX;
+        break;
+    default:
+        break;
+    }
+}
 
 void setup()
 {
@@ -77,96 +123,28 @@ void send_gamepad_report()
         return;
 
     // Reset gamepad report
-    gp.x = 0;
-    gp.y = 0;
-    gp.z = 0;
-    gp.rz = 0;
-    gp.rx = 0;
-    gp.ry = 0;
-    gp.hat = 0;
+    gp.x = AXIS_CENTER;
+    gp.y = AXIS_CENTER;
+    gp.z = AXIS_CENTER;
+    gp.rz = AXIS_CENTER;
+    gp.rx = AXIS_CENTER;
+    gp.ry = AXIS_CENTER;
+    gp.hat = GAMEPAD_HAT_CENTERED;
     gp.buttons = 0;
 
-    // Left booster
+    // Map left booster to left stick (X, Y axes)
+    mapDirectionToAxes(booster_left.getJoystickDirection(), gp.x, gp.y);
 
-    switch (booster_left.getJoystickDirection())
-    {
-    case Booster::JoystickDirection::Up:
-        gp.y = -127;
-        break;
-    case Booster::JoystickDirection::Down:
-        gp.y = 127;
-        break;
-    case Booster::JoystickDirection::Left:
-        gp.x = -127;
-        break;
-    case Booster::JoystickDirection::Right:
-        gp.x = 127;
-        break;
-    case Booster::JoystickDirection::UpLeft:
-        gp.y = -127;
-        gp.x = -127;
-        break;
-    case Booster::JoystickDirection::UpRight:
-        gp.y = -127;
-        gp.x = 127;
-        break;
-    case Booster::JoystickDirection::DownLeft:
-        gp.y = 127;
-        gp.x = -127;
-        break;
-    case Booster::JoystickDirection::DownRight:
-        gp.y = 127;
-        gp.x = 127;
-        break;
-    default:
-        break;
-    }
+    // Map left booster top button to gamepad button
+    if (booster_left.isTopButtonPressed())
+        gp.buttons |= GAMEPAD_BUTTON_EAST;
 
-    if (booster_left.isButtonPressed(Booster::ButtonType::Top))
-    {
-        gp.buttons |= GAMEPAD_BUTTON_0;
-    }
+    // Map right booster to right stick (RX, RY axes)
+    mapDirectionToAxes(booster_right.getJoystickDirection(), gp.rx, gp.ry);
 
-    // Right booster
-
-    switch (booster_right.getJoystickDirection())
-    {
-    case Booster::JoystickDirection::Up:
-        gp.ry = -127;
-        break;
-    case Booster::JoystickDirection::Down:
-        gp.ry = 127;
-        break;
-    case Booster::JoystickDirection::Left:
-        gp.rx = -127;
-        break;
-    case Booster::JoystickDirection::Right:
-        gp.rx = 127;
-        break;
-    case Booster::JoystickDirection::UpLeft:
-        gp.ry = -127;
-        gp.rx = -127;
-        break;
-    case Booster::JoystickDirection::UpRight:
-        gp.ry = -127;
-        gp.rx = 127;
-        break;
-    case Booster::JoystickDirection::DownLeft:
-        gp.ry = 127;
-        gp.rx = -127;
-        break;
-    case Booster::JoystickDirection::DownRight:
-        gp.ry = 127;
-        gp.rx = 127;
-        break;
-    default:
-        break;
-    }
-
-    if (booster_right.isButtonPressed(Booster::ButtonType::Top))
-    {
-        gp.buttons |= GAMEPAD_BUTTON_1;
-    }
+    // Map right booster top button to gamepad button
+    if (booster_right.isTopButtonPressed())
+        gp.buttons |= GAMEPAD_BUTTON_SOUTH;
 
     usb_hid.sendReport(0, &gp, sizeof(gp));
 }
