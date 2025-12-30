@@ -6,39 +6,31 @@
 
 class Booster
 {
-public:
-    enum class ButtonType
-    {
-        Up,
-        Down,
-        Left,
-        Right,
-        Top
-    };
+ public:
+  enum class ButtonType { Up, Down, Left, Right, Top };
 
-    enum class JoystickDirection
-    {
-        Center,
-        Up,
-        Down,
-        Left,
-        Right,
-        UpLeft,
-        UpRight,
-        DownLeft,
-        DownRight
-    };
+  enum class JoystickDirection {
+    Center,
+    Up,
+    Down,
+    Left,
+    Right,
+    UpLeft,
+    UpRight,
+    DownLeft,
+    DownRight
+  };
 
-    Booster(const int buttonPins[BOOSTER_BUTTON_COUNT]);
+  Booster(const int buttonPins[BOOSTER_BUTTON_COUNT]);
 
-    bool isTopButtonPressed() const;
-    JoystickDirection getJoystickDirection() const { return direction_; }
-    void update();
+  bool isTopButtonPressed() const;
+  JoystickDirection getJoystickDirection() const { return direction_; }
+  void update();
 
-private:
-    Bounce2::Button buttons_[BOOSTER_BUTTON_COUNT];
-    JoystickDirection direction_;
-    unsigned long lastDiagonalTime_ = 0;
+ private:
+  Bounce2::Button buttons_[BOOSTER_BUTTON_COUNT];
+  JoystickDirection direction_;
+  unsigned long lastDiagonalTime_ = 0;
 
-    bool isButtonPressed(ButtonType button) const;
+  bool isButtonPressed(ButtonType button) const;
 };
