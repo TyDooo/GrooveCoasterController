@@ -4,22 +4,19 @@
 
 #include "booster.h"
 
-#define NUM_LEDS 32
-#define LEDS_PER_SEGMENT 4
-#define NUM_SEGMENTS (NUM_LEDS / LEDS_PER_SEGMENT)
-
 // Gamepad axis constants
 #define AXIS_MIN -127
 #define AXIS_MAX 127
 #define AXIS_CENTER 0
 
-CRGB leds[NUM_LEDS];
+CRGB booster_left_leds[NUM_LEDS];
+CRGB booster_right_leds[NUM_LEDS];
 
 const int leftPins[5] = {D12, D14, D15, D13, D11};
 const int rightPins[5] = {D16, D17, D18, D19, D20};
 
-Booster booster_left(leftPins);
-Booster booster_right(rightPins);
+Booster booster_left(leftPins, booster_left_leds);
+Booster booster_right(rightPins, booster_right_leds);
 
 // HID report descriptor using TinyUSB's template
 // Single Report (no ID) descriptor
@@ -76,7 +73,8 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
-  FastLED.addLeds<NEOPIXEL, D21>(leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, D21>(booster_left_leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, D20>(booster_right_leds, NUM_LEDS);
 
   if (!TinyUSBDevice.isInitialized()) {
     TinyUSBDevice.begin(0);
@@ -95,16 +93,6 @@ void setup()
     TinyUSBDevice.detach();
     delay(10);
     TinyUSBDevice.attach();
-  }
-}
-
-void set_segment_color(int segment, CRGB color)
-{
-  int start = segment * LEDS_PER_SEGMENT;
-  int end = start + LEDS_PER_SEGMENT;
-  for (int i = start; i < end; i++) {
-    leds[i] = color;
-    leds[i].subtractFromRGB(200);
   }
 }
 
@@ -153,51 +141,99 @@ void update_leds()
   }
 
   for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CHSV(0, 0, brightness);
+    booster_left_leds[i] = CHSV(0, 0, brightness);
+    booster_right_leds[i] = CHSV(0, 0, brightness);
   }
 
   // Left booster
 
   switch (booster_left.getJoystickDirection()) {
     case Booster::JoystickDirection::Up:
-      set_segment_color(0, CRGB::Red);
-      set_segment_color(1, CRGB::Red);
-      set_segment_color(2, CRGB::Red);
-      set_segment_color(3, CRGB::Red);
+      booster_left.set_segment_color(0, CRGB::Red);
+      booster_left.set_segment_color(1, CRGB::Red);
+      booster_left.set_segment_color(2, CRGB::Red);
+      booster_left.set_segment_color(3, CRGB::Red);
       break;
     case Booster::JoystickDirection::Down:
-      set_segment_color(7, CRGB::Red);
-      set_segment_color(6, CRGB::Red);
-      set_segment_color(5, CRGB::Red);
-      set_segment_color(4, CRGB::Red);
+      booster_left.set_segment_color(7, CRGB::Red);
+      booster_left.set_segment_color(6, CRGB::Red);
+      booster_left.set_segment_color(5, CRGB::Red);
+      booster_left.set_segment_color(4, CRGB::Red);
       break;
     case Booster::JoystickDirection::Left:
-      set_segment_color(0, CRGB::Red);
-      set_segment_color(1, CRGB::Red);
-      set_segment_color(6, CRGB::Red);
-      set_segment_color(7, CRGB::Red);
+      booster_left.set_segment_color(0, CRGB::Red);
+      booster_left.set_segment_color(1, CRGB::Red);
+      booster_left.set_segment_color(6, CRGB::Red);
+      booster_left.set_segment_color(7, CRGB::Red);
       break;
     case Booster::JoystickDirection::Right:
-      set_segment_color(2, CRGB::Red);
-      set_segment_color(3, CRGB::Red);
-      set_segment_color(4, CRGB::Red);
-      set_segment_color(5, CRGB::Red);
+      booster_left.set_segment_color(2, CRGB::Red);
+      booster_left.set_segment_color(3, CRGB::Red);
+      booster_left.set_segment_color(4, CRGB::Red);
+      booster_left.set_segment_color(5, CRGB::Red);
       break;
     case Booster::JoystickDirection::UpLeft:
-      set_segment_color(0, CRGB::Red);
-      set_segment_color(1, CRGB::Red);
+      booster_left.set_segment_color(0, CRGB::Red);
+      booster_left.set_segment_color(1, CRGB::Red);
       break;
     case Booster::JoystickDirection::UpRight:
-      set_segment_color(2, CRGB::Red);
-      set_segment_color(3, CRGB::Red);
+      booster_left.set_segment_color(2, CRGB::Red);
+      booster_left.set_segment_color(3, CRGB::Red);
       break;
     case Booster::JoystickDirection::DownLeft:
-      set_segment_color(6, CRGB::Red);
-      set_segment_color(7, CRGB::Red);
+      booster_left.set_segment_color(6, CRGB::Red);
+      booster_left.set_segment_color(7, CRGB::Red);
       break;
     case Booster::JoystickDirection::DownRight:
-      set_segment_color(4, CRGB::Red);
-      set_segment_color(5, CRGB::Red);
+      booster_left.set_segment_color(4, CRGB::Red);
+      booster_left.set_segment_color(5, CRGB::Red);
+      break;
+    default:
+      break;
+  }
+
+  // Right booster
+
+  switch (booster_right.getJoystickDirection()) {
+    case Booster::JoystickDirection::Up:
+      booster_right.set_segment_color(0, CRGB::Red);
+      booster_right.set_segment_color(1, CRGB::Red);
+      booster_right.set_segment_color(2, CRGB::Red);
+      booster_right.set_segment_color(3, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::Down:
+      booster_right.set_segment_color(7, CRGB::Red);
+      booster_right.set_segment_color(6, CRGB::Red);
+      booster_right.set_segment_color(5, CRGB::Red);
+      booster_right.set_segment_color(4, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::Left:
+      booster_right.set_segment_color(0, CRGB::Red);
+      booster_right.set_segment_color(1, CRGB::Red);
+      booster_right.set_segment_color(6, CRGB::Red);
+      booster_right.set_segment_color(7, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::Right:
+      booster_right.set_segment_color(2, CRGB::Red);
+      booster_right.set_segment_color(3, CRGB::Red);
+      booster_right.set_segment_color(4, CRGB::Red);
+      booster_right.set_segment_color(5, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::UpLeft:
+      booster_right.set_segment_color(0, CRGB::Red);
+      booster_right.set_segment_color(1, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::UpRight:
+      booster_right.set_segment_color(2, CRGB::Red);
+      booster_right.set_segment_color(3, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::DownLeft:
+      booster_right.set_segment_color(6, CRGB::Red);
+      booster_right.set_segment_color(7, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::DownRight:
+      booster_right.set_segment_color(4, CRGB::Red);
+      booster_right.set_segment_color(5, CRGB::Red);
       break;
     default:
       break;
@@ -216,7 +252,9 @@ void loop()
   booster_left.update();
   booster_right.update();
 
-  EVERY_N_MILLISECONDS(20) { update_leds(); }
-
-  send_gamepad_report();
+  EVERY_N_MILLISECONDS(20)
+  {
+    update_leds();
+    send_gamepad_report();
+  }
 }

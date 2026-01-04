@@ -5,7 +5,8 @@
 #define BUTTON_DEBOUNCE_MS 10
 #define DIAGONAL_WINDOW_MS 25
 
-Booster::Booster(const int buttonPins[BOOSTER_BUTTON_COUNT])
+Booster::Booster(const int buttonPins[BOOSTER_BUTTON_COUNT], CRGB* leds)
+    : direction_(JoystickDirection::Center), leds_(leds)
 {
   for (int i = 0; i < BOOSTER_BUTTON_COUNT; ++i) {
     buttons_[i] = Bounce2::Button();
@@ -23,6 +24,15 @@ bool Booster::isButtonPressed(ButtonType button) const
 bool Booster::isTopButtonPressed() const
 {
   return isButtonPressed(ButtonType::Top);
+}
+
+void Booster::set_segment_color(int segment, CRGB color)
+{
+  int start = segment * LEDS_PER_SEGMENT;
+  int end = start + LEDS_PER_SEGMENT;
+  for (int i = start; i < end; i++) {
+    leds_[i] = color;
+  }
 }
 
 void Booster::update()
