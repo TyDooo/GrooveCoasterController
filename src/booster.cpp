@@ -2,8 +2,10 @@
 
 #include <Arduino.h>
 
-#define BUTTON_DEBOUNCE_MS 10
-#define DIAGONAL_WINDOW_MS 25
+// Keep these zero for now, I've not ran into any issues yet. If anything,
+// it has gotten more responsive with debouncing disabled. Enable if needed.
+#define BUTTON_DEBOUNCE_MS 0
+#define DIAGONAL_WINDOW_MS 0  // Does wai wai party even use diagonals...?
 
 Booster::Booster(const int buttonPins[BOOSTER_BUTTON_COUNT], CRGB* leds)
     : direction_(JoystickDirection::Center), leds_(leds)

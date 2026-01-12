@@ -12,8 +12,8 @@
 CRGB booster_left_leds[NUM_LEDS];
 CRGB booster_right_leds[NUM_LEDS];
 
-const int leftPins[5] = {D12, D14, D15, D13, D11};
-const int rightPins[5] = {D16, D17, D18, D19, D20};
+const int leftPins[5] = {D9, D8, D7, D6, D5};
+const int rightPins[5] = {D18, D19, D20, D21, D22};
 
 Booster booster_left(leftPins, booster_left_leds);
 Booster booster_right(rightPins, booster_right_leds);
@@ -73,8 +73,8 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
-  FastLED.addLeds<NEOPIXEL, D21>(booster_left_leds, NUM_LEDS);
-  FastLED.addLeds<NEOPIXEL, D20>(booster_right_leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, D15>(booster_left_leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, D16>(booster_right_leds, NUM_LEDS);
 
   if (!TinyUSBDevice.isInitialized()) {
     TinyUSBDevice.begin(0);
@@ -115,78 +115,146 @@ void send_gamepad_report()
   gp.hat = GAMEPAD_HAT_CENTERED;
   gp.buttons = 0;
 
+  // The joystick directions are mapped to the hat and A/B/X/Y buttons and the top
+  // buttons are mapped to the TL/TR buttons. This is done to allow for proper(ish)
+  // controller movement in the menu of the game and perform most actions. Mapping
+  // the top buttons to A and B is not possible as it would prevent you from hitting
+  // double presses in the game. This mapping has been tested in Groove Coaster wai wai
+  // party and works fine for now.
+
   // Map left booster to left stick (X, Y axes)
-  mapDirectionToAxes(booster_left.getJoystickDirection(), gp.x, gp.y);
+  // NOTE: For the switch, NORTH and WEST are swapped compared to standard
+  // gamepad mapping.
+
+  switch (booster_left.getJoystickDirection()) {
+    case Booster::JoystickDirection::Up:
+      gp.buttons |= GAMEPAD_BUTTON_WEST;
+      break;
+    case Booster::JoystickDirection::Down:
+      gp.buttons |= GAMEPAD_BUTTON_SOUTH;
+      break;
+    case Booster::JoystickDirection::Left:
+      gp.buttons |= GAMEPAD_BUTTON_NORTH;
+      break;
+    case Booster::JoystickDirection::Right:
+      gp.buttons |= GAMEPAD_BUTTON_EAST;
+      break;
+    case Booster::JoystickDirection::UpLeft:
+      gp.buttons |= GAMEPAD_BUTTON_NORTH | GAMEPAD_BUTTON_WEST;
+      break;
+    case Booster::JoystickDirection::UpRight:
+      gp.buttons |= GAMEPAD_BUTTON_WEST | GAMEPAD_BUTTON_EAST;
+      break;
+    case Booster::JoystickDirection::DownLeft:
+      gp.buttons |= GAMEPAD_BUTTON_SOUTH | GAMEPAD_BUTTON_NORTH;
+      break;
+    case Booster::JoystickDirection::DownRight:
+      gp.buttons |= GAMEPAD_BUTTON_SOUTH | GAMEPAD_BUTTON_EAST;
+      break;
+    default:
+      break;
+  }
 
   // Map left booster top button to gamepad button
-  if (booster_left.isTopButtonPressed()) gp.buttons |= GAMEPAD_BUTTON_EAST;
+  if (booster_left.isTopButtonPressed()) gp.buttons |= GAMEPAD_BUTTON_TL;
 
   // Map right booster to right stick (RX, RY axes)
-  mapDirectionToAxes(booster_right.getJoystickDirection(), gp.rx, gp.ry);
+  // mapDirectionToAxes(booster_right.getJoystickDirection(), gp.rx, gp.ry);
+
+  switch (booster_right.getJoystickDirection()) {
+    case Booster::JoystickDirection::Up:
+      gp.hat = GAMEPAD_HAT_UP;
+      break;
+    case Booster::JoystickDirection::Down:
+      gp.hat = GAMEPAD_HAT_DOWN;
+      break;
+    case Booster::JoystickDirection::Left:
+      gp.hat = GAMEPAD_HAT_LEFT;
+      break;
+    case Booster::JoystickDirection::Right:
+      gp.hat = GAMEPAD_HAT_RIGHT;
+      break;
+    case Booster::JoystickDirection::UpLeft:
+      gp.hat = GAMEPAD_HAT_UP_LEFT;
+      break;
+    case Booster::JoystickDirection::UpRight:
+      gp.hat = GAMEPAD_HAT_UP_RIGHT;
+      break;
+    case Booster::JoystickDirection::DownLeft:
+      gp.hat = GAMEPAD_HAT_DOWN_LEFT;
+      break;
+    case Booster::JoystickDirection::DownRight:
+      gp.hat = GAMEPAD_HAT_DOWN_RIGHT;
+      break;
+    default:
+      gp.hat = GAMEPAD_HAT_CENTERED;
+      break;
+  }
 
   // Map right booster top button to gamepad button
-  if (booster_right.isTopButtonPressed()) gp.buttons |= GAMEPAD_BUTTON_SOUTH;
+  if (booster_right.isTopButtonPressed()) gp.buttons |= GAMEPAD_BUTTON_TR;
 
   usb_hid.sendReport(0, &gp, sizeof(gp));
 }
 
 void update_leds()
 {
-  static uint8_t brightness = 20;
-  static int8_t direction = 2;
+  const int BPM = 100;
+  const int MIN_BRIGHTNESS = 50;
+  const int MAX_BRIGHTNESS = 200;
 
-  brightness += direction;
-  if (brightness <= 20 || brightness >= 200) {
-    direction = -direction;
-  }
+  uint8_t brightness = beatsin8(BPM, MIN_BRIGHTNESS, MAX_BRIGHTNESS);
 
   for (int i = 0; i < NUM_LEDS; i++) {
-    booster_left_leds[i] = CHSV(0, 0, brightness);
-    booster_right_leds[i] = CHSV(0, 0, brightness);
+    booster_left_leds[i] = CRGB::Magenta;
+    booster_left_leds[i].fadeToBlackBy(255 - brightness);
+
+    booster_right_leds[i] = CRGB::Magenta;
+    booster_right_leds[i].fadeToBlackBy(255 - brightness);
   }
 
   // Left booster
 
   switch (booster_left.getJoystickDirection()) {
     case Booster::JoystickDirection::Up:
-      booster_left.set_segment_color(0, CRGB::Red);
-      booster_left.set_segment_color(1, CRGB::Red);
-      booster_left.set_segment_color(2, CRGB::Red);
-      booster_left.set_segment_color(3, CRGB::Red);
+      booster_left.set_segment_color(7, CRGB::Red);
+      booster_left.set_segment_color(6, CRGB::Red);
+      booster_left.set_segment_color(5, CRGB::Red);
+      booster_left.set_segment_color(4, CRGB::Red);
       break;
     case Booster::JoystickDirection::Down:
-      booster_left.set_segment_color(7, CRGB::Red);
-      booster_left.set_segment_color(6, CRGB::Red);
-      booster_left.set_segment_color(5, CRGB::Red);
-      booster_left.set_segment_color(4, CRGB::Red);
+      booster_left.set_segment_color(0, CRGB::Red);
+      booster_left.set_segment_color(1, CRGB::Red);
+      booster_left.set_segment_color(2, CRGB::Red);
+      booster_left.set_segment_color(3, CRGB::Red);
       break;
     case Booster::JoystickDirection::Left:
-      booster_left.set_segment_color(0, CRGB::Red);
-      booster_left.set_segment_color(1, CRGB::Red);
-      booster_left.set_segment_color(6, CRGB::Red);
-      booster_left.set_segment_color(7, CRGB::Red);
+      booster_left.set_segment_color(2, CRGB::Red);
+      booster_left.set_segment_color(3, CRGB::Red);
+      booster_left.set_segment_color(4, CRGB::Red);
+      booster_left.set_segment_color(5, CRGB::Red);
       break;
     case Booster::JoystickDirection::Right:
-      booster_left.set_segment_color(2, CRGB::Red);
-      booster_left.set_segment_color(3, CRGB::Red);
-      booster_left.set_segment_color(4, CRGB::Red);
-      booster_left.set_segment_color(5, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::UpLeft:
       booster_left.set_segment_color(0, CRGB::Red);
       booster_left.set_segment_color(1, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::UpRight:
-      booster_left.set_segment_color(2, CRGB::Red);
-      booster_left.set_segment_color(3, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::DownLeft:
       booster_left.set_segment_color(6, CRGB::Red);
       booster_left.set_segment_color(7, CRGB::Red);
       break;
-    case Booster::JoystickDirection::DownRight:
+    case Booster::JoystickDirection::UpLeft:
       booster_left.set_segment_color(4, CRGB::Red);
       booster_left.set_segment_color(5, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::UpRight:
+      booster_left.set_segment_color(6, CRGB::Red);
+      booster_left.set_segment_color(7, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::DownLeft:
+      booster_left.set_segment_color(2, CRGB::Red);
+      booster_left.set_segment_color(3, CRGB::Red);
+      break;
+    case Booster::JoystickDirection::DownRight:
+      booster_left.set_segment_color(0, CRGB::Red);
+      booster_left.set_segment_color(1, CRGB::Red);
       break;
     default:
       break;
@@ -252,9 +320,7 @@ void loop()
   booster_left.update();
   booster_right.update();
 
-  EVERY_N_MILLISECONDS(20)
-  {
-    update_leds();
-    send_gamepad_report();
-  }
+  EVERY_N_MILLISECONDS(20) { update_leds(); }
+
+  send_gamepad_report();
 }
