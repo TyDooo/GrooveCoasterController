@@ -6,6 +6,10 @@ As mentioned above, this project uses a pair of official Groove Coaster arcade c
 I found a pair on [Yahoo! Auctions Japan](https://auctions.yahoo.co.jp/) (note: you’ll need a VPN).
 For purchasing and shipping, I used [Japan Rabbit](https://japanrabbit.com/), which worked great.
 
+The current state of the hardware is a bit hacky, but it does work :p
+
+<img src="assets/current_state.jpg" width="40%" alt="Current state of the hardware"/>
+
 ## Controls
 
 TODO: describe the inner working of the Groove Coaster boosters and how the input is handled by the Pico.
