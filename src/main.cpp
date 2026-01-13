@@ -115,12 +115,12 @@ void send_gamepad_report()
   gp.hat = GAMEPAD_HAT_CENTERED;
   gp.buttons = 0;
 
-  // The joystick directions are mapped to the hat and A/B/X/Y buttons and the top
-  // buttons are mapped to the TL/TR buttons. This is done to allow for proper(ish)
-  // controller movement in the menu of the game and perform most actions. Mapping
-  // the top buttons to A and B is not possible as it would prevent you from hitting
-  // double presses in the game. This mapping has been tested in Groove Coaster wai wai
-  // party and works fine for now.
+  // The joystick directions are mapped to the hat and A/B/X/Y buttons and the
+  // top buttons are mapped to the TL/TR buttons. This is done to allow for
+  // proper(ish) controller movement in the menu of the game and perform most
+  // actions. Mapping the top buttons to A and B is not possible as it would
+  // prevent you from hitting double presses in the game. This mapping has been
+  // tested in Groove Coaster wai wai party and works fine for now.
 
   // Map left booster to left stick (X, Y axes)
   // NOTE: For the switch, NORTH and WEST are swapped compared to standard
@@ -197,115 +197,164 @@ void send_gamepad_report()
   usb_hid.sendReport(0, &gp, sizeof(gp));
 }
 
+CRGB ripple_leds_left[NUM_LEDS];
+CRGB ripple_leds_right[NUM_LEDS];
+
+#define MAX_RIPPLES 5
+
+struct RippleEffect {
+  bool active = false;
+  int center1 = 0;
+  int center2 = 1;
+  float pos = -1.0;
+};
+
+RippleEffect leftRipples[MAX_RIPPLES];
+RippleEffect rightRipples[MAX_RIPPLES];
+
+void ripple(CRGB* leds, RippleEffect* ripples)
+{
+  const float speed = 0.4;
+
+  fadeToBlackBy(leds, NUM_LEDS, 100);
+
+  uint8_t maxDist = NUM_SEGMENTS / 2;
+
+  for (int r = 0; r < MAX_RIPPLES; r++) {
+    if (!ripples[r].active) continue;
+
+    ripples[r].pos += speed;
+
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+      int d1 = abs(i - ripples[r].center1);
+      if (d1 > maxDist) d1 = NUM_SEGMENTS - d1;  // Wrap around
+      int d2 = abs(i - ripples[r].center2);
+      if (d2 > maxDist) d2 = NUM_SEGMENTS - d2;  // Wrap around
+      uint8_t distance = min(d1, d2);
+
+      if (abs(ripples[r].pos - distance) < 0.8) {
+        fill_solid(&leds[i * LEDS_PER_SEGMENT], LEDS_PER_SEGMENT, CRGB::Purple);
+      }
+    }
+
+    if (ripples[r].pos > maxDist + 1) {
+      ripples[r].active = false;
+    }
+  }
+}
+
+void trigger_ripple(RippleEffect* ripples, int center1, int center2)
+{
+  for (int i = 0; i < MAX_RIPPLES; i++) {
+    if (!ripples[i].active) {
+      ripples[i].pos = 0.0;
+      ripples[i].active = true;
+      ripples[i].center1 = center1;
+      ripples[i].center2 = center2;
+      break;
+    }
+  }
+}
+
 void update_leds()
 {
   const int BPM = 100;
-  const int MIN_BRIGHTNESS = 50;
-  const int MAX_BRIGHTNESS = 200;
+  const int MIN_BRIGHTNESS = 10;
+  const int MAX_BRIGHTNESS = 30;
 
+  // Background breathing effect
   uint8_t brightness = beatsin8(BPM, MIN_BRIGHTNESS, MAX_BRIGHTNESS);
+  CRGB bg_color = CRGB::White;
+  bg_color.fadeToBlackBy(255 - brightness);
+  fill_solid(booster_left_leds, NUM_LEDS, bg_color);
+  fill_solid(booster_right_leds, NUM_LEDS, bg_color);
 
+  ripple(ripple_leds_left, leftRipples);
+  ripple(ripple_leds_right, rightRipples);
+
+  // Overlay ripple effect
   for (int i = 0; i < NUM_LEDS; i++) {
-    booster_left_leds[i] = CRGB::Magenta;
-    booster_left_leds[i].fadeToBlackBy(255 - brightness);
-
-    booster_right_leds[i] = CRGB::Magenta;
-    booster_right_leds[i].fadeToBlackBy(255 - brightness);
+    booster_left_leds[i] =
+        CRGB::blend(booster_left_leds[i], ripple_leds_left[i], 200);
+    booster_right_leds[i] =
+        CRGB::blend(booster_right_leds[i], ripple_leds_right[i], 200);
   }
 
   // Left booster
 
-  switch (booster_left.getJoystickDirection()) {
-    case Booster::JoystickDirection::Up:
-      booster_left.set_segment_color(7, CRGB::Red);
-      booster_left.set_segment_color(6, CRGB::Red);
-      booster_left.set_segment_color(5, CRGB::Red);
-      booster_left.set_segment_color(4, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::Down:
-      booster_left.set_segment_color(0, CRGB::Red);
-      booster_left.set_segment_color(1, CRGB::Red);
-      booster_left.set_segment_color(2, CRGB::Red);
-      booster_left.set_segment_color(3, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::Left:
-      booster_left.set_segment_color(2, CRGB::Red);
-      booster_left.set_segment_color(3, CRGB::Red);
-      booster_left.set_segment_color(4, CRGB::Red);
-      booster_left.set_segment_color(5, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::Right:
-      booster_left.set_segment_color(0, CRGB::Red);
-      booster_left.set_segment_color(1, CRGB::Red);
-      booster_left.set_segment_color(6, CRGB::Red);
-      booster_left.set_segment_color(7, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::UpLeft:
-      booster_left.set_segment_color(4, CRGB::Red);
-      booster_left.set_segment_color(5, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::UpRight:
-      booster_left.set_segment_color(6, CRGB::Red);
-      booster_left.set_segment_color(7, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::DownLeft:
-      booster_left.set_segment_color(2, CRGB::Red);
-      booster_left.set_segment_color(3, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::DownRight:
-      booster_left.set_segment_color(0, CRGB::Red);
-      booster_left.set_segment_color(1, CRGB::Red);
-      break;
-    default:
-      break;
+  static Booster::JoystickDirection lastDirectionLeft =
+      Booster::JoystickDirection::Center;
+
+  if (lastDirectionLeft != booster_left.getJoystickDirection()) {
+    switch (lastDirectionLeft) {
+      case Booster::JoystickDirection::Up:
+        trigger_ripple(leftRipples, 5, 6);
+        break;
+      case Booster::JoystickDirection::Down:
+        trigger_ripple(leftRipples, 1, 2);
+        break;
+      case Booster::JoystickDirection::Left:
+        trigger_ripple(leftRipples, 3, 4);
+        break;
+      case Booster::JoystickDirection::Right:
+        trigger_ripple(leftRipples, 0, 7);
+        break;
+      case Booster::JoystickDirection::UpLeft:
+        trigger_ripple(leftRipples, 4, 5);
+        break;
+      case Booster::JoystickDirection::UpRight:
+        trigger_ripple(leftRipples, 6, 7);
+        break;
+      case Booster::JoystickDirection::DownLeft:
+        trigger_ripple(leftRipples, 2, 3);
+        break;
+      case Booster::JoystickDirection::DownRight:
+        trigger_ripple(leftRipples, 0, 1);
+        break;
+      default:
+        break;
+    }
   }
+
+  lastDirectionLeft = booster_left.getJoystickDirection();
 
   // Right booster
 
-  switch (booster_right.getJoystickDirection()) {
-    case Booster::JoystickDirection::Up:
-      booster_right.set_segment_color(0, CRGB::Red);
-      booster_right.set_segment_color(1, CRGB::Red);
-      booster_right.set_segment_color(2, CRGB::Red);
-      booster_right.set_segment_color(3, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::Down:
-      booster_right.set_segment_color(7, CRGB::Red);
-      booster_right.set_segment_color(6, CRGB::Red);
-      booster_right.set_segment_color(5, CRGB::Red);
-      booster_right.set_segment_color(4, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::Left:
-      booster_right.set_segment_color(0, CRGB::Red);
-      booster_right.set_segment_color(1, CRGB::Red);
-      booster_right.set_segment_color(6, CRGB::Red);
-      booster_right.set_segment_color(7, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::Right:
-      booster_right.set_segment_color(2, CRGB::Red);
-      booster_right.set_segment_color(3, CRGB::Red);
-      booster_right.set_segment_color(4, CRGB::Red);
-      booster_right.set_segment_color(5, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::UpLeft:
-      booster_right.set_segment_color(0, CRGB::Red);
-      booster_right.set_segment_color(1, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::UpRight:
-      booster_right.set_segment_color(2, CRGB::Red);
-      booster_right.set_segment_color(3, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::DownLeft:
-      booster_right.set_segment_color(6, CRGB::Red);
-      booster_right.set_segment_color(7, CRGB::Red);
-      break;
-    case Booster::JoystickDirection::DownRight:
-      booster_right.set_segment_color(4, CRGB::Red);
-      booster_right.set_segment_color(5, CRGB::Red);
-      break;
-    default:
-      break;
+  static Booster::JoystickDirection lastDirectionRight =
+      Booster::JoystickDirection::Center;
+
+  if (lastDirectionRight != booster_right.getJoystickDirection()) {
+    switch (lastDirectionRight) {
+      case Booster::JoystickDirection::Up:
+        trigger_ripple(rightRipples, 1, 2);
+        break;
+      case Booster::JoystickDirection::Down:
+        trigger_ripple(rightRipples, 5, 6);
+        break;
+      case Booster::JoystickDirection::Left:
+        trigger_ripple(rightRipples, 0, 7);
+        break;
+      case Booster::JoystickDirection::Right:
+        trigger_ripple(rightRipples, 3, 4);
+        break;
+      case Booster::JoystickDirection::UpLeft:
+        trigger_ripple(rightRipples, 0, 1);
+        break;
+      case Booster::JoystickDirection::UpRight:
+        trigger_ripple(rightRipples, 2, 3);
+        break;
+      case Booster::JoystickDirection::DownLeft:
+        trigger_ripple(rightRipples, 6, 7);
+        break;
+      case Booster::JoystickDirection::DownRight:
+        trigger_ripple(rightRipples, 4, 5);
+        break;
+      default:
+        break;
+    }
   }
+
+  lastDirectionRight = booster_right.getJoystickDirection();
 
   FastLED.show();
 }
