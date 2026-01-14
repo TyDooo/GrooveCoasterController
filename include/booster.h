@@ -8,6 +8,7 @@
 #define NUM_LEDS 32
 #define LEDS_PER_SEGMENT 4
 #define NUM_SEGMENTS (NUM_LEDS / LEDS_PER_SEGMENT)
+#define LED_UPDATE_INTERVAL_MS 10  // 10 MS == 100 FPS
 
 class Booster
 {

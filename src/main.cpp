@@ -3,6 +3,7 @@
 #include <FastLED.h>
 
 #include "booster.h"
+#include "effects.h"
 
 // Gamepad axis constants
 #define AXIS_MIN -127
@@ -11,6 +12,9 @@
 
 CRGB booster_left_leds[NUM_LEDS];
 CRGB booster_right_leds[NUM_LEDS];
+
+EffectManager booster_left_effect_manager;
+EffectManager booster_right_effect_manager;
 
 const int leftPins[5] = {D9, D8, D7, D6, D5};
 const int rightPins[5] = {D18, D19, D20, D21, D22};
@@ -200,85 +204,13 @@ void send_gamepad_report()
 CRGB ripple_leds_left[NUM_LEDS];
 CRGB ripple_leds_right[NUM_LEDS];
 
-#define MAX_RIPPLES 5
-
-struct RippleEffect {
-  bool active = false;
-  int center1 = 0;
-  int center2 = 1;
-  float pos = -1.0;
-};
-
-RippleEffect leftRipples[MAX_RIPPLES];
-RippleEffect rightRipples[MAX_RIPPLES];
-
-void ripple(CRGB* leds, RippleEffect* ripples)
-{
-  const float speed = 0.4;
-
-  fadeToBlackBy(leds, NUM_LEDS, 100);
-
-  uint8_t maxDist = NUM_SEGMENTS / 2;
-
-  for (int r = 0; r < MAX_RIPPLES; r++) {
-    if (!ripples[r].active) continue;
-
-    ripples[r].pos += speed;
-
-    for (int i = 0; i < NUM_SEGMENTS; i++) {
-      int d1 = abs(i - ripples[r].center1);
-      if (d1 > maxDist) d1 = NUM_SEGMENTS - d1;  // Wrap around
-      int d2 = abs(i - ripples[r].center2);
-      if (d2 > maxDist) d2 = NUM_SEGMENTS - d2;  // Wrap around
-      uint8_t distance = min(d1, d2);
-
-      if (abs(ripples[r].pos - distance) < 0.8) {
-        fill_solid(&leds[i * LEDS_PER_SEGMENT], LEDS_PER_SEGMENT, CRGB::Purple);
-      }
-    }
-
-    if (ripples[r].pos > maxDist + 1) {
-      ripples[r].active = false;
-    }
-  }
-}
-
-void trigger_ripple(RippleEffect* ripples, int center1, int center2)
-{
-  for (int i = 0; i < MAX_RIPPLES; i++) {
-    if (!ripples[i].active) {
-      ripples[i].pos = 0.0;
-      ripples[i].active = true;
-      ripples[i].center1 = center1;
-      ripples[i].center2 = center2;
-      break;
-    }
-  }
-}
-
 void update_leds()
 {
-  const int BPM = 100;
-  const int MIN_BRIGHTNESS = 10;
-  const int MAX_BRIGHTNESS = 30;
+  fill_solid(booster_left_leds, NUM_LEDS, CHSV(0, 0, 50));
+  fill_solid(booster_right_leds, NUM_LEDS, CHSV(0, 0, 50));
 
-  // Background breathing effect
-  uint8_t brightness = beatsin8(BPM, MIN_BRIGHTNESS, MAX_BRIGHTNESS);
-  CRGB bg_color = CRGB::White;
-  bg_color.fadeToBlackBy(255 - brightness);
-  fill_solid(booster_left_leds, NUM_LEDS, bg_color);
-  fill_solid(booster_right_leds, NUM_LEDS, bg_color);
-
-  ripple(ripple_leds_left, leftRipples);
-  ripple(ripple_leds_right, rightRipples);
-
-  // Overlay ripple effect
-  for (int i = 0; i < NUM_LEDS; i++) {
-    booster_left_leds[i] =
-        CRGB::blend(booster_left_leds[i], ripple_leds_left[i], 200);
-    booster_right_leds[i] =
-        CRGB::blend(booster_right_leds[i], ripple_leds_right[i], 200);
-  }
+  booster_left_effect_manager.updateEffects(booster_left_leds);
+  booster_right_effect_manager.updateEffects(booster_right_leds);
 
   // Left booster
 
@@ -288,33 +220,40 @@ void update_leds()
   if (lastDirectionLeft != booster_left.getJoystickDirection()) {
     switch (lastDirectionLeft) {
       case Booster::JoystickDirection::Up:
-        trigger_ripple(leftRipples, 5, 6);
+        booster_left_effect_manager.startEffect(new RippleEffect{5, 6});
         break;
       case Booster::JoystickDirection::Down:
-        trigger_ripple(leftRipples, 1, 2);
+        booster_left_effect_manager.startEffect(new RippleEffect{1, 2});
         break;
       case Booster::JoystickDirection::Left:
-        trigger_ripple(leftRipples, 3, 4);
+        booster_left_effect_manager.startEffect(new RippleEffect{3, 4});
         break;
       case Booster::JoystickDirection::Right:
-        trigger_ripple(leftRipples, 0, 7);
+        booster_left_effect_manager.startEffect(new RippleEffect{0, 7});
         break;
       case Booster::JoystickDirection::UpLeft:
-        trigger_ripple(leftRipples, 4, 5);
+        booster_left_effect_manager.startEffect(new RippleEffect{4, 5});
         break;
       case Booster::JoystickDirection::UpRight:
-        trigger_ripple(leftRipples, 6, 7);
+        booster_left_effect_manager.startEffect(new RippleEffect{6, 7});
         break;
       case Booster::JoystickDirection::DownLeft:
-        trigger_ripple(leftRipples, 2, 3);
+        booster_left_effect_manager.startEffect(new RippleEffect{2, 3});
         break;
       case Booster::JoystickDirection::DownRight:
-        trigger_ripple(leftRipples, 0, 1);
+        booster_left_effect_manager.startEffect(new RippleEffect{0, 1});
         break;
       default:
         break;
     }
   }
+
+  static bool lastTopButtonLeft = false;
+  if (lastTopButtonLeft != booster_left.isTopButtonPressed() &&
+      lastTopButtonLeft) {
+    booster_left_effect_manager.startEffect(new FadeInOutEffect(200));
+  }
+  lastTopButtonLeft = booster_left.isTopButtonPressed();
 
   lastDirectionLeft = booster_left.getJoystickDirection();
 
@@ -326,28 +265,28 @@ void update_leds()
   if (lastDirectionRight != booster_right.getJoystickDirection()) {
     switch (lastDirectionRight) {
       case Booster::JoystickDirection::Up:
-        trigger_ripple(rightRipples, 1, 2);
+        booster_right_effect_manager.startEffect(new RippleEffect{1, 2});
         break;
       case Booster::JoystickDirection::Down:
-        trigger_ripple(rightRipples, 5, 6);
+        booster_right_effect_manager.startEffect(new RippleEffect{5, 6});
         break;
       case Booster::JoystickDirection::Left:
-        trigger_ripple(rightRipples, 0, 7);
+        booster_right_effect_manager.startEffect(new RippleEffect{0, 7});
         break;
       case Booster::JoystickDirection::Right:
-        trigger_ripple(rightRipples, 3, 4);
+        booster_right_effect_manager.startEffect(new RippleEffect{3, 4});
         break;
       case Booster::JoystickDirection::UpLeft:
-        trigger_ripple(rightRipples, 0, 1);
+        booster_right_effect_manager.startEffect(new RippleEffect{0, 1});
         break;
       case Booster::JoystickDirection::UpRight:
-        trigger_ripple(rightRipples, 2, 3);
+        booster_right_effect_manager.startEffect(new RippleEffect{2, 3});
         break;
       case Booster::JoystickDirection::DownLeft:
-        trigger_ripple(rightRipples, 6, 7);
+        booster_right_effect_manager.startEffect(new RippleEffect{6, 7});
         break;
       case Booster::JoystickDirection::DownRight:
-        trigger_ripple(rightRipples, 4, 5);
+        booster_right_effect_manager.startEffect(new RippleEffect{4, 5});
         break;
       default:
         break;
@@ -355,6 +294,13 @@ void update_leds()
   }
 
   lastDirectionRight = booster_right.getJoystickDirection();
+
+  static bool lastTopButtonRight = false;
+  if (lastTopButtonRight != booster_right.isTopButtonPressed() &&
+      lastTopButtonRight) {
+    booster_right_effect_manager.startEffect(new FadeInOutEffect(200));
+  }
+  lastTopButtonRight = booster_right.isTopButtonPressed();
 
   FastLED.show();
 }
@@ -369,7 +315,7 @@ void loop()
   booster_left.update();
   booster_right.update();
 
-  EVERY_N_MILLISECONDS(20) { update_leds(); }
+  EVERY_N_MILLISECONDS(LED_UPDATE_INTERVAL_MS) { update_leds(); }
 
   send_gamepad_report();
 }
