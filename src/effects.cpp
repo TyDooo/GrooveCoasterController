@@ -44,3 +44,25 @@ void FadeInOutEffect::update()
 
   if (this->brightness == 0) this->active = false;
 }
+
+void HoldSolidEffect::update()
+{
+  // if not released, fade to brightness within the speed and keep it there
+
+  if (!released) {
+    int newBrightness = this->brightness + this->speed;
+    if (newBrightness > UINT8_MAX) newBrightness = UINT8_MAX;
+    this->brightness = newBrightness;
+  } else {
+    // If released, fade out
+    int newBrightness = this->brightness - this->speed;
+    if (newBrightness < 0) newBrightness = 0;
+    this->brightness = newBrightness;
+  }
+
+  CRGB color = targetColor;
+  color.fadeToBlackBy(255 - this->brightness);
+  fill_solid(this->leds, NUM_LEDS, color);
+
+  if (this->brightness == 0) this->active = false;
+}

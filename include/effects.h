@@ -94,3 +94,25 @@ class FadeInOutEffect : public Effect
 
   void update() override;
 };
+
+class HoldSolidEffect : public Effect
+{
+  CRGB targetColor;
+  uint8_t brightness;
+  uint8_t speed;
+  bool released;
+
+ public:
+  HoldSolidEffect(CRGB color = CRGB::White, uint durationMs = 200)
+      : targetColor(color)
+  {
+    active = true;
+    released = false;
+
+    speed = UINT8_MAX / (durationMs / LED_UPDATE_INTERVAL_MS);
+  }
+
+  void update() override;
+
+  void release() { released = true; }
+};

@@ -212,6 +212,40 @@ void update_leds()
   booster_left_effect_manager.updateEffects(booster_left_leds);
   booster_right_effect_manager.updateEffects(booster_right_leds);
 
+  // Handle simultaneous top button presses for both boosters
+  static int bothPressedTime = 0;
+  static bool dualPressConsumed = false;
+  static HoldSolidEffect* activeHoldLeft = nullptr;
+  static HoldSolidEffect* activeHoldRight = nullptr;
+
+  bool bothPressed =
+      booster_left.isTopButtonPressed() && booster_right.isTopButtonPressed();
+
+  if (bothPressed) {
+    if (bothPressedTime == 0) {
+      bothPressedTime = millis();
+    } else if (!dualPressConsumed && (millis() - bothPressedTime) >= 100) {
+      activeHoldLeft = new HoldSolidEffect(CRGB::DarkOrange, 100);
+      booster_left_effect_manager.startEffect(activeHoldLeft);
+
+      activeHoldRight = new HoldSolidEffect(CRGB::DarkOrange, 100);
+      booster_right_effect_manager.startEffect(activeHoldRight);
+
+      dualPressConsumed = true;
+    }
+  } else if (!bothPressed) {
+    if (activeHoldLeft) {
+      activeHoldLeft->release();
+      activeHoldLeft = nullptr;
+    }
+    if (activeHoldRight) {
+      activeHoldRight->release();
+      activeHoldRight = nullptr;
+    }
+
+    bothPressedTime = 0;
+  }
+
   // Left booster
 
   static Booster::JoystickDirection lastDirectionLeft =
@@ -247,13 +281,6 @@ void update_leds()
         break;
     }
   }
-
-  static bool lastTopButtonLeft = false;
-  if (lastTopButtonLeft != booster_left.isTopButtonPressed() &&
-      lastTopButtonLeft) {
-    booster_left_effect_manager.startEffect(new FadeInOutEffect(200));
-  }
-  lastTopButtonLeft = booster_left.isTopButtonPressed();
 
   lastDirectionLeft = booster_left.getJoystickDirection();
 
@@ -295,12 +322,31 @@ void update_leds()
 
   lastDirectionRight = booster_right.getJoystickDirection();
 
+  // Left booster single top button press
+  static bool lastTopButtonLeft = false;
+  bool currentTopButtonLeft = booster_left.isTopButtonPressed();
+
+  if (lastTopButtonLeft && !currentTopButtonLeft) {  // On Release
+    if (!dualPressConsumed) {
+      booster_left_effect_manager.startEffect(new FadeInOutEffect(200));
+    }
+  }
+  lastTopButtonLeft = booster_left.isTopButtonPressed();
+
+  // Right booster single top button press
   static bool lastTopButtonRight = false;
-  if (lastTopButtonRight != booster_right.isTopButtonPressed() &&
-      lastTopButtonRight) {
-    booster_right_effect_manager.startEffect(new FadeInOutEffect(200));
+  bool currentTopButtonRight = booster_right.isTopButtonPressed();
+
+  if (lastTopButtonRight && !currentTopButtonRight) {  // On Release
+    if (!dualPressConsumed) {
+      booster_right_effect_manager.startEffect(new FadeInOutEffect(200));
+    }
   }
   lastTopButtonRight = booster_right.isTopButtonPressed();
+
+  if (!currentTopButtonLeft && !currentTopButtonRight) {
+    dualPressConsumed = false;
+  }
 
   FastLED.show();
 }
