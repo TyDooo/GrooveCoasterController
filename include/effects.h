@@ -80,9 +80,11 @@ class FadeInOutEffect : public Effect
 {
   uint8_t brightness;
   int8_t direction;  // Controls speed and direction of fade
+  CRGB color;
 
  public:
-  FadeInOutEffect(uint durationMs = 500)
+  FadeInOutEffect(CRGB color = CRGB::White, uint durationMs = 200)
+      : color(color)
   {
     active = true;
     brightness = 0;

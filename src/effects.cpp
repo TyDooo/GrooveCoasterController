@@ -38,9 +38,9 @@ void FadeInOutEffect::update()
     this->direction = -this->direction;
   }
 
-  CRGB color = CRGB::White;
-  color.fadeToBlackBy(255 - this->brightness);
-  fill_solid(this->leds, NUM_LEDS, color);
+  CRGB col = this->color;
+  col.fadeToBlackBy(255 - this->brightness);
+  fill_solid(this->leds, NUM_LEDS, col);
 
   if (this->brightness == 0) this->active = false;
 }
