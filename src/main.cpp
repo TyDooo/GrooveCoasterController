@@ -204,6 +204,7 @@ void send_gamepad_report()
 CRGB ripple_leds_left[NUM_LEDS];
 CRGB ripple_leds_right[NUM_LEDS];
 
+// TODO: This function could use some refactoring
 void update_leds()
 {
   fill_solid(booster_left_leds, NUM_LEDS, CHSV(0, 0, 50));

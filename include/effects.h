@@ -15,6 +15,8 @@ class Effect
     memset(leds, 0, sizeof(leds));
   }
 
+  virtual ~Effect() {}
+
   bool active = false;
   virtual void update() = 0;
   CRGB leds[NUM_LEDS];
@@ -27,11 +29,18 @@ class EffectManager
  public:
   void startEffect(Effect* effect)
   {
+    bool added = false;
     for (int i = 0; i < MAX_EFFECTS; i++) {
       if (!effects[i] || !effects[i]->active) {
         effects[i] = effect;
+        added = true;
         break;
       }
+    }
+
+    if (!added) {
+      // No available slot, delete the effect to avoid memory leak
+      delete effect;
     }
   }
 
@@ -44,6 +53,9 @@ class EffectManager
         for (int j = 0; j < NUM_LEDS; j++) {
           target_leds[j] = blend(target_leds[j], effects[i]->leds[j], 128);
         }
+      } else {
+        delete effects[i];
+        effects[i] = nullptr;
       }
     }
   }
