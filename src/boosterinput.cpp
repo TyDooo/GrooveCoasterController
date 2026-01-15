@@ -10,6 +10,8 @@
 BoosterInput::BoosterInput(const int buttonPins[BOOSTER_BUTTON_COUNT])
     : direction_(JoystickDirection::Center)
 {
+  mutex_init(&mutex_);
+  
   for (int i = 0; i < BOOSTER_BUTTON_COUNT; ++i) {
     buttons_[i] = Bounce2::Button();
     buttons_[i].attach(buttonPins[i], INPUT_PULLUP);
@@ -20,25 +22,41 @@ BoosterInput::BoosterInput(const int buttonPins[BOOSTER_BUTTON_COUNT])
 
 bool BoosterInput::isButtonPressed(ButtonType button) const
 {
-  return buttons_[(int)button].isPressed();
+  mutex_enter_blocking(&mutex_);
+  bool pressed = buttons_[(int)button].isPressed();
+  mutex_exit(&mutex_);
+  return pressed;
 }
 
 bool BoosterInput::isTopButtonPressed() const
 {
-  return isButtonPressed(ButtonType::Top);
+  mutex_enter_blocking(&mutex_);
+  bool pressed = buttons_[(int)ButtonType::Top].isPressed();
+  mutex_exit(&mutex_);
+  return pressed;
+}
+
+BoosterInput::JoystickDirection BoosterInput::getJoystickDirection() const
+{
+  mutex_enter_blocking(&mutex_);
+  JoystickDirection dir = direction_;
+  mutex_exit(&mutex_);
+  return dir;
 }
 
 void BoosterInput::update()
 {
+  mutex_enter_blocking(&mutex_);
+  
   for (int i = 0; i < BOOSTER_BUTTON_COUNT; ++i) {
     buttons_[i].update();
   }
 
   // Compute joystick direction based on button states
-  bool up = isButtonPressed(ButtonType::Up);
-  bool down = isButtonPressed(ButtonType::Down);
-  bool left = isButtonPressed(ButtonType::Left);
-  bool right = isButtonPressed(ButtonType::Right);
+  bool up = buttons_[(int)ButtonType::Up].isPressed();
+  bool down = buttons_[(int)ButtonType::Down].isPressed();
+  bool left = buttons_[(int)ButtonType::Left].isPressed();
+  bool right = buttons_[(int)ButtonType::Right].isPressed();
 
   // SOCD Cleaning: Up + Down = Neutral, Left + Right = Neutral
   if (up && down) up = down = false;
@@ -94,4 +112,6 @@ void BoosterInput::update()
     direction_ = newDirection;
     lastDiagonalTime_ = 0;
   }
+  
+  mutex_exit(&mutex_);
 }

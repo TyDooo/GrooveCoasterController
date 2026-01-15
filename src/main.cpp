@@ -22,11 +22,9 @@ Adafruit_USBD_HID usb_hid;
 
 hid_gamepad_report_t gp;
 
+// Setup for core0
 void setup()
 {
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
-
   if (!TinyUSBDevice.isInitialized()) {
     TinyUSBDevice.begin(0);
   }
@@ -37,8 +35,6 @@ void setup()
   usb_hid.setPollInterval(2);
   usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
   usb_hid.begin();
-
-  ledManager.setup();
 
   // If already enumerated, additional class driver begin() e.g msc, hid, midi
   // won't take effect until re-enumeration
@@ -79,7 +75,7 @@ void sendGamepadReport()
   // NOTE: For the switch, NORTH and WEST are swapped compared to standard
   // gamepad mapping.
 
-  switch (booster_left.getJoystickDirection()) {
+  switch (booster_left.getJoystickDirectionUnsafe()) {
     case BoosterInput::JoystickDirection::Up:
       gp.buttons |= GAMEPAD_BUTTON_WEST;
       break;
@@ -109,12 +105,12 @@ void sendGamepadReport()
   }
 
   // Map left booster top button to gamepad button
-  if (booster_left.isTopButtonPressed()) gp.buttons |= GAMEPAD_BUTTON_TL;
+  if (booster_left.isTopButtonPressedUnsafe()) gp.buttons |= GAMEPAD_BUTTON_TL;
 
   // Map right booster to right stick (RX, RY axes)
   // mapDirectionToAxes(booster_right.getJoystickDirection(), gp.rx, gp.ry);
 
-  switch (booster_right.getJoystickDirection()) {
+  switch (booster_right.getJoystickDirectionUnsafe()) {
     case BoosterInput::JoystickDirection::Up:
       gp.hat = GAMEPAD_HAT_UP;
       break;
@@ -145,11 +141,12 @@ void sendGamepadReport()
   }
 
   // Map right booster top button to gamepad button
-  if (booster_right.isTopButtonPressed()) gp.buttons |= GAMEPAD_BUTTON_TR;
+  if (booster_right.isTopButtonPressedUnsafe()) gp.buttons |= GAMEPAD_BUTTON_TR;
 
   usb_hid.sendReport(0, &gp, sizeof(gp));
 }
 
+// Loop for core0
 void loop()
 {
 #ifdef TINYUSB_NEED_POLLING_TASK
@@ -160,7 +157,17 @@ void loop()
   booster_left.update();
   booster_right.update();
 
-  ledManager.update();
-
   sendGamepadReport();
 }
+
+// Setup for core1
+void setup1()
+{
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  ledManager.setup();
+}
+
+// Loop for core1
+void loop1() { ledManager.update(); }
