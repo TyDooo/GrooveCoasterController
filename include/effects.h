@@ -2,7 +2,7 @@
 
 #include <FastLED.h>
 
-#include "booster.h"
+#include "common.h"
 
 #define MAX_EFFECTS 10
 

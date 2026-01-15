@@ -1,4 +1,4 @@
-#include "booster.h"
+#include "boosterinput.h"
 
 #include <Arduino.h>
 
@@ -7,8 +7,8 @@
 #define BUTTON_DEBOUNCE_MS 0
 #define DIAGONAL_WINDOW_MS 0  // Does wai wai party even use diagonals...?
 
-Booster::Booster(const int buttonPins[BOOSTER_BUTTON_COUNT], CRGB* leds)
-    : direction_(JoystickDirection::Center), leds_(leds)
+BoosterInput::BoosterInput(const int buttonPins[BOOSTER_BUTTON_COUNT])
+    : direction_(JoystickDirection::Center)
 {
   for (int i = 0; i < BOOSTER_BUTTON_COUNT; ++i) {
     buttons_[i] = Bounce2::Button();
@@ -18,26 +18,17 @@ Booster::Booster(const int buttonPins[BOOSTER_BUTTON_COUNT], CRGB* leds)
   }
 }
 
-bool Booster::isButtonPressed(ButtonType button) const
+bool BoosterInput::isButtonPressed(ButtonType button) const
 {
   return buttons_[(int)button].isPressed();
 }
 
-bool Booster::isTopButtonPressed() const
+bool BoosterInput::isTopButtonPressed() const
 {
   return isButtonPressed(ButtonType::Top);
 }
 
-void Booster::set_segment_color(int segment, CRGB color)
-{
-  int start = segment * LEDS_PER_SEGMENT;
-  int end = start + LEDS_PER_SEGMENT;
-  for (int i = start; i < end; i++) {
-    leds_[i] = color;
-  }
-}
-
-void Booster::update()
+void BoosterInput::update()
 {
   for (int i = 0; i < BOOSTER_BUTTON_COUNT; ++i) {
     buttons_[i].update();

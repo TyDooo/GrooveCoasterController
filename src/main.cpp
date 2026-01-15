@@ -2,25 +2,16 @@
 #include <Arduino.h>
 #include <FastLED.h>
 
-#include "booster.h"
-#include "effects.h"
+#include "boosterinput.h"
+#include "ledmanager.h"
 
-// Gamepad axis constants
-#define AXIS_MIN -127
-#define AXIS_MAX 127
-#define AXIS_CENTER 0
+static const int leftPins[5] = {D9, D8, D7, D6, D5};
+static const int rightPins[5] = {D18, D19, D20, D21, D22};
 
-CRGB booster_left_leds[NUM_LEDS];
-CRGB booster_right_leds[NUM_LEDS];
+BoosterInput booster_left(leftPins);
+BoosterInput booster_right(rightPins);
 
-EffectManager booster_left_effect_manager;
-EffectManager booster_right_effect_manager;
-
-const int leftPins[5] = {D9, D8, D7, D6, D5};
-const int rightPins[5] = {D18, D19, D20, D21, D22};
-
-Booster booster_left(leftPins, booster_left_leds);
-Booster booster_right(rightPins, booster_right_leds);
+LEDManager ledManager(&booster_left, &booster_right);
 
 // HID report descriptor using TinyUSB's template
 // Single Report (no ID) descriptor
@@ -31,54 +22,10 @@ Adafruit_USBD_HID usb_hid;
 
 hid_gamepad_report_t gp;
 
-// Helper function to map joystick direction to axis values
-void mapDirectionToAxes(Booster::JoystickDirection direction, int8_t& xAxis,
-                        int8_t& yAxis)
-{
-  xAxis = AXIS_CENTER;
-  yAxis = AXIS_CENTER;
-
-  switch (direction) {
-    case Booster::JoystickDirection::Up:
-      yAxis = AXIS_MIN;
-      break;
-    case Booster::JoystickDirection::Down:
-      yAxis = AXIS_MAX;
-      break;
-    case Booster::JoystickDirection::Left:
-      xAxis = AXIS_MIN;
-      break;
-    case Booster::JoystickDirection::Right:
-      xAxis = AXIS_MAX;
-      break;
-    case Booster::JoystickDirection::UpLeft:
-      yAxis = AXIS_MIN;
-      xAxis = AXIS_MIN;
-      break;
-    case Booster::JoystickDirection::UpRight:
-      yAxis = AXIS_MIN;
-      xAxis = AXIS_MAX;
-      break;
-    case Booster::JoystickDirection::DownLeft:
-      yAxis = AXIS_MAX;
-      xAxis = AXIS_MIN;
-      break;
-    case Booster::JoystickDirection::DownRight:
-      yAxis = AXIS_MAX;
-      xAxis = AXIS_MAX;
-      break;
-    default:
-      break;
-  }
-}
-
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
-
-  FastLED.addLeds<NEOPIXEL, D15>(booster_left_leds, NUM_LEDS);
-  FastLED.addLeds<NEOPIXEL, D16>(booster_right_leds, NUM_LEDS);
 
   if (!TinyUSBDevice.isInitialized()) {
     TinyUSBDevice.begin(0);
@@ -91,6 +38,8 @@ void setup()
   usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
   usb_hid.begin();
 
+  ledManager.setup();
+
   // If already enumerated, additional class driver begin() e.g msc, hid, midi
   // won't take effect until re-enumeration
   if (TinyUSBDevice.mounted()) {
@@ -100,7 +49,7 @@ void setup()
   }
 }
 
-void send_gamepad_report()
+void sendGamepadReport()
 {
   // not enumerated()/mounted() yet: nothing to do
   if (!TinyUSBDevice.mounted()) {
@@ -110,12 +59,12 @@ void send_gamepad_report()
   if (!usb_hid.ready()) return;
 
   // Reset gamepad report
-  gp.x = AXIS_CENTER;
-  gp.y = AXIS_CENTER;
-  gp.z = AXIS_CENTER;
-  gp.rz = AXIS_CENTER;
-  gp.rx = AXIS_CENTER;
-  gp.ry = AXIS_CENTER;
+  gp.x = 0;
+  gp.y = 0;
+  gp.z = 0;
+  gp.rz = 0;
+  gp.rx = 0;
+  gp.ry = 0;
   gp.hat = GAMEPAD_HAT_CENTERED;
   gp.buttons = 0;
 
@@ -131,28 +80,28 @@ void send_gamepad_report()
   // gamepad mapping.
 
   switch (booster_left.getJoystickDirection()) {
-    case Booster::JoystickDirection::Up:
+    case BoosterInput::JoystickDirection::Up:
       gp.buttons |= GAMEPAD_BUTTON_WEST;
       break;
-    case Booster::JoystickDirection::Down:
+    case BoosterInput::JoystickDirection::Down:
       gp.buttons |= GAMEPAD_BUTTON_SOUTH;
       break;
-    case Booster::JoystickDirection::Left:
+    case BoosterInput::JoystickDirection::Left:
       gp.buttons |= GAMEPAD_BUTTON_NORTH;
       break;
-    case Booster::JoystickDirection::Right:
+    case BoosterInput::JoystickDirection::Right:
       gp.buttons |= GAMEPAD_BUTTON_EAST;
       break;
-    case Booster::JoystickDirection::UpLeft:
+    case BoosterInput::JoystickDirection::UpLeft:
       gp.buttons |= GAMEPAD_BUTTON_NORTH | GAMEPAD_BUTTON_WEST;
       break;
-    case Booster::JoystickDirection::UpRight:
+    case BoosterInput::JoystickDirection::UpRight:
       gp.buttons |= GAMEPAD_BUTTON_WEST | GAMEPAD_BUTTON_EAST;
       break;
-    case Booster::JoystickDirection::DownLeft:
+    case BoosterInput::JoystickDirection::DownLeft:
       gp.buttons |= GAMEPAD_BUTTON_SOUTH | GAMEPAD_BUTTON_NORTH;
       break;
-    case Booster::JoystickDirection::DownRight:
+    case BoosterInput::JoystickDirection::DownRight:
       gp.buttons |= GAMEPAD_BUTTON_SOUTH | GAMEPAD_BUTTON_EAST;
       break;
     default:
@@ -166,28 +115,28 @@ void send_gamepad_report()
   // mapDirectionToAxes(booster_right.getJoystickDirection(), gp.rx, gp.ry);
 
   switch (booster_right.getJoystickDirection()) {
-    case Booster::JoystickDirection::Up:
+    case BoosterInput::JoystickDirection::Up:
       gp.hat = GAMEPAD_HAT_UP;
       break;
-    case Booster::JoystickDirection::Down:
+    case BoosterInput::JoystickDirection::Down:
       gp.hat = GAMEPAD_HAT_DOWN;
       break;
-    case Booster::JoystickDirection::Left:
+    case BoosterInput::JoystickDirection::Left:
       gp.hat = GAMEPAD_HAT_LEFT;
       break;
-    case Booster::JoystickDirection::Right:
+    case BoosterInput::JoystickDirection::Right:
       gp.hat = GAMEPAD_HAT_RIGHT;
       break;
-    case Booster::JoystickDirection::UpLeft:
+    case BoosterInput::JoystickDirection::UpLeft:
       gp.hat = GAMEPAD_HAT_UP_LEFT;
       break;
-    case Booster::JoystickDirection::UpRight:
+    case BoosterInput::JoystickDirection::UpRight:
       gp.hat = GAMEPAD_HAT_UP_RIGHT;
       break;
-    case Booster::JoystickDirection::DownLeft:
+    case BoosterInput::JoystickDirection::DownLeft:
       gp.hat = GAMEPAD_HAT_DOWN_LEFT;
       break;
-    case Booster::JoystickDirection::DownRight:
+    case BoosterInput::JoystickDirection::DownRight:
       gp.hat = GAMEPAD_HAT_DOWN_RIGHT;
       break;
     default:
@@ -201,167 +150,6 @@ void send_gamepad_report()
   usb_hid.sendReport(0, &gp, sizeof(gp));
 }
 
-CRGB ripple_leds_left[NUM_LEDS];
-CRGB ripple_leds_right[NUM_LEDS];
-
-// TODO: This function could use some refactoring
-void update_leds()
-{
-  fill_solid(booster_left_leds, NUM_LEDS, CHSV(0, 0, 50));
-  fill_solid(booster_right_leds, NUM_LEDS, CHSV(0, 0, 50));
-
-  booster_left_effect_manager.updateEffects(booster_left_leds);
-  booster_right_effect_manager.updateEffects(booster_right_leds);
-
-  // Handle simultaneous top button presses for both boosters
-  static unsigned long bothPressedTime = 0;
-  static bool dualPressConsumed = false;
-  static HoldSolidEffect* activeHoldLeft = nullptr;
-  static HoldSolidEffect* activeHoldRight = nullptr;
-
-  bool currentTopButtonLeft = booster_left.isTopButtonPressed();
-  bool currentTopButtonRight = booster_right.isTopButtonPressed();
-  bool bothPressed = currentTopButtonLeft && currentTopButtonRight;
-
-  if (bothPressed) {
-    if (bothPressedTime == 0) {
-      bothPressedTime = millis();
-    } else if (!dualPressConsumed && (millis() - bothPressedTime) >= 100) {
-      activeHoldLeft = new HoldSolidEffect(CRGB::DarkOrange, 100);
-      booster_left_effect_manager.startEffect(activeHoldLeft);
-
-      activeHoldRight = new HoldSolidEffect(CRGB::DarkOrange, 100);
-      booster_right_effect_manager.startEffect(activeHoldRight);
-
-      dualPressConsumed = true;
-    }
-  } else {
-    if (bothPressedTime != 0) {
-      if (!dualPressConsumed) {
-        booster_left_effect_manager.startEffect(
-            new FadeInOutEffect(CRGB::Blue));
-        booster_right_effect_manager.startEffect(
-            new FadeInOutEffect(CRGB::Blue));
-        dualPressConsumed = true;
-      }
-
-      if (activeHoldLeft) {
-        activeHoldLeft->release();
-        activeHoldLeft = nullptr;
-      }
-      if (activeHoldRight) {
-        activeHoldRight->release();
-        activeHoldRight = nullptr;
-      }
-
-      bothPressedTime = 0;
-    }
-  }
-
-  // Left booster
-
-  static Booster::JoystickDirection lastDirectionLeft =
-      Booster::JoystickDirection::Center;
-
-  if (lastDirectionLeft != booster_left.getJoystickDirection()) {
-    switch (lastDirectionLeft) {
-      case Booster::JoystickDirection::Up:
-        booster_left_effect_manager.startEffect(new RippleEffect{5, 6});
-        break;
-      case Booster::JoystickDirection::Down:
-        booster_left_effect_manager.startEffect(new RippleEffect{1, 2});
-        break;
-      case Booster::JoystickDirection::Left:
-        booster_left_effect_manager.startEffect(new RippleEffect{3, 4});
-        break;
-      case Booster::JoystickDirection::Right:
-        booster_left_effect_manager.startEffect(new RippleEffect{0, 7});
-        break;
-      case Booster::JoystickDirection::UpLeft:
-        booster_left_effect_manager.startEffect(new RippleEffect{4, 5});
-        break;
-      case Booster::JoystickDirection::UpRight:
-        booster_left_effect_manager.startEffect(new RippleEffect{6, 7});
-        break;
-      case Booster::JoystickDirection::DownLeft:
-        booster_left_effect_manager.startEffect(new RippleEffect{2, 3});
-        break;
-      case Booster::JoystickDirection::DownRight:
-        booster_left_effect_manager.startEffect(new RippleEffect{0, 1});
-        break;
-      default:
-        break;
-    }
-  }
-
-  lastDirectionLeft = booster_left.getJoystickDirection();
-
-  // Right booster
-
-  static Booster::JoystickDirection lastDirectionRight =
-      Booster::JoystickDirection::Center;
-
-  if (lastDirectionRight != booster_right.getJoystickDirection()) {
-    switch (lastDirectionRight) {
-      case Booster::JoystickDirection::Up:
-        booster_right_effect_manager.startEffect(new RippleEffect{1, 2});
-        break;
-      case Booster::JoystickDirection::Down:
-        booster_right_effect_manager.startEffect(new RippleEffect{5, 6});
-        break;
-      case Booster::JoystickDirection::Left:
-        booster_right_effect_manager.startEffect(new RippleEffect{0, 7});
-        break;
-      case Booster::JoystickDirection::Right:
-        booster_right_effect_manager.startEffect(new RippleEffect{3, 4});
-        break;
-      case Booster::JoystickDirection::UpLeft:
-        booster_right_effect_manager.startEffect(new RippleEffect{0, 1});
-        break;
-      case Booster::JoystickDirection::UpRight:
-        booster_right_effect_manager.startEffect(new RippleEffect{2, 3});
-        break;
-      case Booster::JoystickDirection::DownLeft:
-        booster_right_effect_manager.startEffect(new RippleEffect{6, 7});
-        break;
-      case Booster::JoystickDirection::DownRight:
-        booster_right_effect_manager.startEffect(new RippleEffect{4, 5});
-        break;
-      default:
-        break;
-    }
-  }
-
-  lastDirectionRight = booster_right.getJoystickDirection();
-
-  // Left booster single top button press
-  static bool lastTopButtonLeft = false;
-
-  if (lastTopButtonLeft && !currentTopButtonLeft) {  // On Release
-    if (!dualPressConsumed) {
-      booster_left_effect_manager.startEffect(new FadeInOutEffect(CRGB::White));
-    }
-  }
-  lastTopButtonLeft = booster_left.isTopButtonPressed();
-
-  // Right booster single top button press
-  static bool lastTopButtonRight = false;
-
-  if (lastTopButtonRight && !currentTopButtonRight) {  // On Release
-    if (!dualPressConsumed) {
-      booster_right_effect_manager.startEffect(
-          new FadeInOutEffect(CRGB::White));
-    }
-  }
-  lastTopButtonRight = booster_right.isTopButtonPressed();
-
-  if (!currentTopButtonLeft && !currentTopButtonRight) {
-    dualPressConsumed = false;
-  }
-
-  FastLED.show();
-}
-
 void loop()
 {
 #ifdef TINYUSB_NEED_POLLING_TASK
@@ -372,7 +160,7 @@ void loop()
   booster_left.update();
   booster_right.update();
 
-  EVERY_N_MILLISECONDS(LED_UPDATE_INTERVAL_MS) { update_leds(); }
+  ledManager.update();
 
-  send_gamepad_report();
+  sendGamepadReport();
 }
